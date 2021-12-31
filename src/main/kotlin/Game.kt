@@ -1,7 +1,13 @@
+import java.io.Console
+import java.io.IOException
+import java.io.PrintWriter
+import java.io.Reader
 import java.lang.Math.PI
+import java.lang.ProcessBuilder.*
+import java.util.concurrent.TimeUnit
 import kotlin.math.cos
-import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.system.exitProcess
 
 /**
  * See https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -19,12 +25,9 @@ object ANSI {
 }
 
 
-class Screen {
+class Screen(private val writer: PrintWriter) {
     val width = 120
     val height = 40
-
-    private val console = System.console()
-    private val writer get() = console.writer()
 
     private val buffer = CharArray(width * height)
 
@@ -32,12 +35,12 @@ class Screen {
         buffer[y * width + x] = value
     }
 
-    fun redraw() {
+    fun drawFrame() {
         clear()
-        draw()
+        render()
     }
 
-    fun draw() {
+    fun render() {
         writer.print(buffer)
         writer.flush()
     }
@@ -48,6 +51,11 @@ class Screen {
         writer.print(ANSI.HOME)
         writer.flush()
     }
+}
+
+
+class Keyboard(private val reader: Reader) {
+    fun key(): Int? = reader.takeIf { it.ready() }?.read()
 }
 
 
@@ -97,13 +105,54 @@ class Player {
     val y by pos::y
 }
 
+class Terminal(console: Console) {
+
+    val screen = Screen(console.writer())
+    val keyboard = Keyboard(console.reader())
+
+    fun activateSingleCharacterMode() {
+        stty("cbreak")
+    }
+
+    fun backToInteractiveMode() {
+        stty("sane")
+    }
+
+    private fun stty(vararg options: String) {
+        val stty = ProcessBuilder("/bin/sh", "-c", "stty ${options.joinToString(separator = " ")} < /dev/tty")
+            .redirectOutput(Redirect.INHERIT)
+            .redirectError(Redirect.INHERIT)
+            .start()
+        if (!stty.waitFor(1, TimeUnit.SECONDS)) {
+            stty.destroy()
+            throw IOException("Timed out setting tty options")
+        }
+        if (stty.exitValue() != 0) {
+            throw RuntimeException("Failed to set tty options with code ${stty.exitValue()}")
+        }
+    }
+
+    companion object {
+        fun connect() = Terminal(System.console() ?: throw IOException("Not in a tty"))
+    }
+}
+
 fun main() {
-    val screen = Screen()
+    val terminal = Terminal.connect()
+    terminal.activateSingleCharacterMode()
+
+    val screen = terminal.screen
+    val keyboard = terminal.keyboard
     val world = World()
     val camera = Camera()
     val player = Player()
 
     while (true) {
+        if (keyboard.key() != null) {
+            terminal.backToInteractiveMode()
+            exitProcess(0)
+        }
+
         (0 until screen.width).forEach { x ->
             // Simple ray casting to find distance to wall
             val rayAngle = player.pov - camera.fov / 2 + camera.fov * x / screen.width
@@ -146,6 +195,6 @@ fun main() {
             }
         }
 
-        screen.redraw()
+        screen.drawFrame()
     }
 }
