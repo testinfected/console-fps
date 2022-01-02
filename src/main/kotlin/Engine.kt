@@ -49,9 +49,10 @@ class Camera(val fov: Angle)
 
 
 class Player(private val pos: Vector2D, var pov: Angle = 0.0) {
-    val x by pos::x
-    val y by pos::y
+    var x by pos::x
+    var y by pos::y
 
+    val speed = 5.0 / SECONDS.toNanos(1)
     // Player makes a full revolution in 3s
     val rotationSpeed = 2.0 * PI / 3.0 / SECONDS.toNanos(1)
 }

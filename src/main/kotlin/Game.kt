@@ -92,6 +92,14 @@ object Game {
         if (Key.RIGHT in keystrokes) {
             player.pov += player.rotationSpeed * elapsedTime
         }
+        if (Key.UP in keystrokes) {
+            player.x += sin(player.pov) * player.speed * elapsedTime
+            player.y += cos(player.pov) * player.speed * elapsedTime
+        }
+        if (Key.DOWN in keystrokes) {
+            player.x -= sin(player.pov) * player.speed * elapsedTime
+            player.y -= cos(player.pov) * player.speed * elapsedTime
+        }
 
         (0 until screen.width).forEach { x ->
             // Simple ray casting to find distance to wall
