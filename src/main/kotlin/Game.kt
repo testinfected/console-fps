@@ -1,16 +1,11 @@
-import java.lang.Math.PI
 import java.nio.charset.StandardCharsets
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.system.exitProcess
 
 
-class World {
-    val width = 16
-    val height = 16
-    val depth = 16.0
-
-    val map = """
+// World has fixed size 16x16 size
+val map = """
         ################
         #..............#
         #..............#
@@ -27,56 +22,43 @@ class World {
         #..............#
         #..............#
         ################
-    """.trimIndent().filterNot { it == '\n' }
+""".trimIndent()
 
-    operator fun get(x: Int, y: Int) = map[y * width + x]
-}
-
-
-class Camera {
-    val fov: Double = PI / 4
-}
-
-
-class Player {
-    val pos = v(8.0, 8.0)
-    val pov = 0.0
-
-    val x by pos::x
-    val y by pos::y
-}
-
+private val terminal = Terminal.connect(StandardCharsets.UTF_8)
 
 object Game {
-    private val terminal = Terminal.connect(StandardCharsets.UTF_8)
-
     private val screen = terminal.screen
     private val keyboard = terminal.keyboard
-    private val world = World()
-    private val camera = Camera()
-    private val player = Player()
+    private val world = World.load(map)
+    private val camera = Camera(fov = Math.PI / 4)
+    private val player = Player(v(8.0, 8.0))
 
-    val keystrokes = mutableListOf<Key>()
+    private val keystrokes = mutableListOf<Key>()
 
     fun launch() {
         init()
 
         while (true) {
-            renderFrame()
+            processInput()
+            if (Key.Q in keystrokes) quit()
+            updateFrame()
         }
+    }
+
+    private fun processInput() {
+        keystrokes += keyboard.readKeys()
+    }
+
+    private fun quit() {
+        terminal.backToInteractiveMode()
+        exitProcess(0)
     }
 
     private fun init() {
         terminal.activateSingleCharacterMode()
     }
 
-    private fun renderFrame() {
-        keystrokes += keyboard.readKeys()
-        if (Key.Q in keystrokes) {
-            terminal.backToInteractiveMode()
-            exitProcess(0)
-        }
-
+    private fun updateFrame() {
         (0 until screen.width).forEach { x ->
             // Simple ray casting to find distance to wall
             val rayAngle = player.pov - camera.fov / 2 + camera.fov * x / screen.width
@@ -123,7 +105,7 @@ object Game {
             screen[i % screen.width, 0] = char
         }
 
-        screen.render()
+        screen.renderFrame()
     }
 }
 

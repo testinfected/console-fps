@@ -14,7 +14,7 @@ class Screen(output: Writer) {
         buffer[y * width + x] = value
     }
 
-    fun render() {
+    fun renderFrame() {
         clear()
         swapBuffers()
     }
