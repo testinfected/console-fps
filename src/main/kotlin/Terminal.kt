@@ -74,6 +74,9 @@ class Terminal(charset: Charset) {
 
     fun activateSingleCharacterMode() {
         Stty.configure("cbreak")
+        Stty.configure("-echo")
+        Stty.configure("min 1")
+        Stty.configure("time 0")
     }
 
     fun backToInteractiveMode() {
