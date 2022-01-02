@@ -56,6 +56,8 @@ object Game {
     private val camera = Camera()
     private val player = Player()
 
+    val keystrokes = mutableListOf<Key>()
+
     fun launch() {
         init()
 
@@ -69,9 +71,8 @@ object Game {
     }
 
     private fun renderFrame() {
-        val keys = keyboard.readInput()
-        if (keys.isNotEmpty()) {
-            println("input : ${keys.joinToString()}")
+        keystrokes += keyboard.readKeys()
+        if (Key.Q in keystrokes) {
             terminal.backToInteractiveMode()
             exitProcess(0)
         }
@@ -116,6 +117,10 @@ object Game {
                     screen[x, y] = ' '
                 }
             }
+        }
+
+        keystrokes.map { it.symbol }.flatMap { it.toList() }.forEachIndexed { i, char ->
+            screen[i % screen.width, 0] = char
         }
 
         screen.render()

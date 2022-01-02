@@ -1,64 +1,52 @@
 import java.io.*
-import java.lang.ProcessBuilder.*
+import java.lang.ProcessBuilder.Redirect
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
+import java.util.*
 import java.util.concurrent.TimeUnit
+
 
 /**
  * See https://en.wikipedia.org/wiki/ANSI_escape_code
  */
 object ANSI {
     // Starts most of the useful sequences
-    const val ESC = "\u001b"
+    val ESC = 0x1B.toChar()
+    val CSI = "$ESC["
 
     // CSI sequences
-
     // Clear screen and delete lines in scroll back buffer
-    const val CLS = "$ESC[3J"
-    const val HOME = "$ESC[H"
-    const val HIDE_CURSOR = "$ESC[?25l"
-}
+    val CLS = "${CSI}3J"
 
+    // Move cursor back to (1,1)
+    val HOME = "${CSI}H"
+    val UP = "${CSI}A"
+    val DOWN = "${CSI}B"
+    val RIGHT = "${CSI}C"
+    val LEFT = "${CSI}D"
+    val HIDE_CURSOR = "$CSI?25l"
 
-class Screen(output: Writer) {
-    val width = 120
-    val height = 40
-
-    private val output = PrintWriter(output)
-    private val buffer = CharArray(width * height)
-
-    operator fun set(x: Int, y: Int, value: Char) {
-        buffer[y * width + x] = value
-    }
-
-    fun render() {
-        clear()
-        swapBuffers()
-    }
-
-    private fun swapBuffers() {
-        output.print(buffer)
-        output.flush()
-    }
-
-    private fun clear() {
-        output.print(ANSI.HIDE_CURSOR)
-        output.print(ANSI.CLS)
-        output.print(ANSI.HOME)
-        output.flush()
-    }
-}
-
-
-class Keyboard(private val reader: Reader) {
-    private val noInput = charArrayOf()
-    private val buffer = CharArray(128)
-
-    fun readInput(): CharArray {
-        if (!reader.ready()) return noInput
-        val count = reader.read(buffer)
-        if (count <= 0) return noInput
-        return buffer.copyOfRange(0, count)
+    fun keysIn(input: Queue<Char>): List<Key> {
+        return when (val key = input.poll() ?: return listOf()) {
+            ESC -> {
+                when ("${ESC}${input.poll() ?: return listOf(Key.ESC)}") {
+                    CSI -> {
+                        val control = when ("${ANSI.CSI}${input.poll()}") {
+                            UP -> listOf(Key.UP)
+                            DOWN -> listOf(Key.DOWN)
+                            RIGHT -> listOf(Key.RIGHT)
+                            LEFT -> listOf(Key.LEFT)
+                            // We don't support any other control sequence
+                            else -> listOf()
+                        }
+                        return control + keysIn(input)
+                    }
+                    // We don't support any other escape sequence
+                    else -> listOf(Key.ESC) + keysIn(input)
+                }
+            }
+            else -> Key.forStroke(key) + keysIn(input)
+        }
     }
 }
 
@@ -78,6 +66,7 @@ object Stty {
         }
     }
 }
+
 
 class Terminal(charset: Charset) {
     val screen = Screen(OutputStreamWriter(System.out, charset))
