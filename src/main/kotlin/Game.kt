@@ -11,16 +11,16 @@ val map = """
         ################
         #..............#
         #..............#
+        #.........#....#
+        #.........#....#
+        #..............#
+        #..............#
+        #....##........#
         #..............#
         #..............#
         #..............#
         #..............#
-        #..............#
-        #..............#
-        #..............#
-        #..............#
-        #..............#
-        #..............#
+        #####..........#
         #..............#
         #..............#
         ################
@@ -60,11 +60,12 @@ object Game {
 
     private fun displayStats(elapsedTime: Long) {
         if (!enableStats) return
-        val info = "X = %3.2f Y = %3.2f, POV = %3.2f, FPS = %4.2f".format(
+        val info = "X = %3.2f Y = %3.2f, POV = %3.2f, FPS = %4.2f, KEYS = %s".format(
             player.x,
             player.y,
             player.pov,
-            SECONDS.toNanos(1).toDouble() / elapsedTime
+            SECONDS.toNanos(1).toDouble() / elapsedTime,
+            keystrokes.map { it.symbol }.joinToString()
         )
         info.toCharArray().forEachIndexed { i, char ->
             screen[i, 0] = char
