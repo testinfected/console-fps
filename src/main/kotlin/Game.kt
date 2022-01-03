@@ -36,8 +36,10 @@ object Game {
 
     // Set frame duration to account for terminal key repeat delay in order to get a smooth animation
     private val timer = AnimationTimer(frameDuration = MILLISECONDS.toNanos(15))
+
     // Camera has field of view of 90º (which is rather small)
     private val camera = Camera(fov = Math.PI / 4)
+
     // Player starts at the middle of the map
     private val player = Player(v(8.0, 8.0))
 
@@ -129,13 +131,25 @@ object Game {
             val ceilingHeight = screen.height / 2 - screen.height / distanceToWall
             val floorHeight = screen.height / 2 + screen.height / distanceToWall
 
+            val wallShade =
+                // full shade
+                if (distanceToWall < world.depth / 4.0) '\u2588'
+                // dark shade
+                else if (distanceToWall < world.depth / 3.0) '\u2593'
+                // medium shade
+                else if (distanceToWall < world.depth / 2.0) '\u2592'
+                // light shade
+                else if (distanceToWall < world.depth) '\u2591'
+                // no shade at all
+                else ' '
+
             (0 until screen.height).forEach { y ->
                 if (y < ceilingHeight) {
                     // Ceiling
                     screen[x, y] = ' '
                 } else if (y < floorHeight) {
                     // Wall
-                    screen[x, y] = '\u2593'
+                    screen[x, y] = wallShade
                 } else {
                     // Floor
                     screen[x, y] = ' '
