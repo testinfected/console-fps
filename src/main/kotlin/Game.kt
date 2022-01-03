@@ -107,11 +107,11 @@ object Game {
         (0 until screen.width).forEach { x ->
             // Simple ray casting to find distance to wall
             val rayAngle = player.pov - camera.fov / 2 + camera.fov * x / screen.width
-            val rayStep = 0.1
 
             // Unit vector looking direction
             val eyeDirection = v(sin(rayAngle), cos(rayAngle))
 
+            val rayStep = 0.1
             var distanceToWall = 0.0
             var hitWall = false
 
@@ -128,10 +128,6 @@ object Game {
                 }
             }
 
-            // Distances to ceiling and floor, top is 0
-            val ceilingHeight = screen.height / 2 - screen.height / distanceToWall
-            val floorHeight = screen.height / 2 + screen.height / distanceToWall
-
             val wallShade =
                 // full shade
                 if (distanceToWall < world.depth / 4.0) '\u2588'
@@ -144,6 +140,10 @@ object Game {
                 // no shade at all
                 else ' '
 
+            // Distances of ceiling and floor from top (top is 0)
+            val ceilingHeight = screen.height / 2 - screen.height / distanceToWall
+            val floorHeight = screen.height / 2 + screen.height / distanceToWall
+
             (0 until screen.height).forEach { y ->
                 if (y < ceilingHeight) {
                     // Ceiling
@@ -153,7 +153,16 @@ object Game {
                     screen[x, y] = wallShade
                 } else {
                     // Floor
-                    screen[x, y] = ' '
+                    val distanceToFloor = 1.0 - (y - screen.height / 2).toDouble() / (screen.height / 2)
+
+                    val floorShade =
+                        if (distanceToFloor < 0.25) '#'
+                        else if (distanceToFloor < 0.5) 'x'
+                        else if (distanceToFloor < 0.75) '-'
+                        else if (distanceToFloor < 0.9) '.'
+                        else ' '
+
+                    screen[x, y] = floorShade
                 }
             }
         }
