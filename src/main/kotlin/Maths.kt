@@ -8,7 +8,7 @@ data class Vector2D(val x: Double, val y: Double) {
     }
 
     operator fun times(multiplier: Double): Vector2D {
-        return Vector2D(x * multiplier, y + multiplier)
+        return Vector2D(x * multiplier, y * multiplier)
     }
 }
 
