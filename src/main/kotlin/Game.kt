@@ -120,7 +120,10 @@ object Game {
 
     private fun updateFrame(elapsedTime: Long) {
         handleInput(elapsedTime)
+        drawMap()
+    }
 
+    private fun drawMap() {
         (0 until screen.width).forEach { x ->
             val distanceToWall = world.depth(from = player.position, direction = lookingDirection(x))
             val wallShade = world.wallShade(distance = distanceToWall)
@@ -129,7 +132,7 @@ object Game {
 
             (0 until screen.height).forEach { y ->
                 when {
-                    y <= ceilingHeight-> screen[x, y] = ' '
+                    y <= ceilingHeight -> screen[x, y] = ' '
                     y <= floorHeight -> screen[x, y] = wallShade
                     else -> screen[x, y] = world.floorShade(distanceToFloor(y))
                 }
@@ -143,11 +146,11 @@ object Game {
         return v(sin(rayAngle), cos(rayAngle))
     }
 
-    private fun ceilingHeight(distance: Double) = screen.height / 2.0 - screen.height / (distance + 2.0)
+    private fun ceilingHeight(distance: Double) = screen.height / 2.0 - screen.height / distance
 
     private fun floorHeight(distance: Double) = screen.height - ceilingHeight(distance)
 
-    private fun distanceToFloor(y: Int) = 1.0 - (y - screen.height / 2.0) / (screen.height / 2.0)
+    private fun distanceToFloor(y: Int) = 1.0 - (y - screen.height / 2.0) / screen.height
 
     private fun handleInput(elapsedTime: Long) {
         if (Key.LEFT in keystrokes) {
@@ -158,9 +161,11 @@ object Game {
         }
         if (Key.UP in keystrokes) {
             player.moveForward(elapsedTime)
+            if (world.isWallAt(player.position)) player.moveBackward(elapsedTime)
         }
         if (Key.DOWN in keystrokes) {
             player.moveBackward(elapsedTime)
+            if (world.isWallAt(player.position)) player.moveForward(elapsedTime)
         }
     }
 }
