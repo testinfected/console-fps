@@ -38,10 +38,29 @@ data class Vector2D(val x: Double, val y: Double) {
     operator fun not(): Vector2D {
         return v(y, -x)
     }
-}
 
-infix fun Vector2D.angle(other: Vector2D) = acos(dot(other) / (magnitude * other.magnitude) )
+    infix fun Vector2D.angle(other: Vector2D) = acos(dot(other) / (magnitude * other.magnitude) )
+}
 
 fun v(x: Double, y: Double) = Vector2D(x, y)
 
 fun v(x: Int, y: Int) = v(x.toDouble(), y.toDouble())
+
+fun Vector2D.isParallelTo(other: Vector2D, margin: Double = 0.0) = (this angle other) < margin
+
+
+data class Polyhedron(val vertices: List<Point>, val distance: Double) {
+    private val edges: List<Edge> = vertices.windowed(size = 2).map { (first, second) -> first to second }
+
+    fun visibleEdges(fromPointOfView: Vector2D): Set<Point> {
+        return edges.filter { !it dot (fromPointOfView) > 0 }.flatMap { it.toList() }.toSet()
+    }
+}
+
+fun cube(topLeft: Point, distance: Double): Polyhedron {
+    // wound in counter-clockwise position
+    val vertices = listOf(v(0, 0), v(0, 1), v(1, 1), v(1, 0), v(0, 0)).map {
+        topLeft + it
+    }
+    return Polyhedron(vertices, distance)
+}

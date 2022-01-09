@@ -14,18 +14,10 @@ class World(private val map: CharArray) {
 
     fun isWallAt(step: Point) = this[step.x.toInt(), step.y.toInt()] == WALL
 
-    fun nearestWall(from: Vector2D) = v(from.x.toInt(), from.y.toInt())
-
-    private fun vertices(pos: Point /* = Vector2D */): List<Point> {
-        val topLeft = v(pos.x.roundToInt(),pos.y.toInt())
-        // wound in counter-clockwise position
-        return listOf(v(0, 0), v(0, 1), v(1, 1), v(1, 0), v(0, 0)).map {
-            topLeft + it
-        }
-    }
-
-    fun edges(pos: Point): List<Edge> {
-        return vertices(pos).windowed(size = 2).map { (first, second) -> first to second }
+    fun locateWall(from: Point, towards: Vector2D): Polyhedron {
+        val distance = depth(from, direction = towards)
+        val hit = from + towards * distance
+        return cube(v(hit.x.toInt(), hit.y.toInt()), distance)
     }
 
     companion object {

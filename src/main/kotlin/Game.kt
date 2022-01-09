@@ -59,7 +59,7 @@ private fun World.floorShade(distanceToFloor: Double): Char {
 private val terminal = Terminal.connect(StandardCharsets.UTF_8)
 
 
-private const val EDGE_DELTA = 0.004
+private const val TINY_ANGLE = 0.004
 
 object Game {
     private val screen = terminal.screen
@@ -140,17 +140,16 @@ object Game {
     private fun drawMap() {
         (0 until screen.width).forEach { x ->
             val eye = lookingDirection(x)
-            val distanceToWall = world.depth(from = player.position, direction = eye)
+            val wall = world.locateWall(from = player.position, towards = eye)
+            val visibleEdges = wall.visibleEdges(fromPointOfView = eye)
 
-            val wall = world.nearestWall(from = player.position + eye * distanceToWall)
-            val visibleEdges = world.edges(wall).filter { !it dot (eye) > 0 }.flatMap { it.toList() }.toSet()
             val wallShade = when {
-                visibleEdges.any { eye angle (it - player.position) < EDGE_DELTA } -> NONE
-                else -> world.wallShade(distance = distanceToWall)
+                visibleEdges.any { eye.isParallelTo(it - player.position, margin = TINY_ANGLE) } -> NONE
+                else -> world.wallShade(distance = wall.distance)
             }
 
-            val ceilingHeight = ceilingHeight(distance = distanceToWall)
-            val floorHeight = floorHeight(distance = distanceToWall)
+            val ceilingHeight = ceilingHeight(distance = wall.distance)
+            val floorHeight = floorHeight(distance = wall.distance)
 
             (0 until screen.height).forEach { y ->
                 when {
