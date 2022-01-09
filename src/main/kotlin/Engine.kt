@@ -1,6 +1,7 @@
 import java.util.concurrent.TimeUnit.SECONDS
 import kotlin.math.*
 
+// Top left corner is located at (0, 0)
 class World(private val map: CharArray) {
     val width = 16
     val height = 16
@@ -12,6 +13,20 @@ class World(private val map: CharArray) {
         p.x < 0 || p.x >= width || p.y < 0 || p.y >= height
 
     fun isWallAt(step: Point) = this[step.x.toInt(), step.y.toInt()] == WALL
+
+    fun nearestWall(from: Vector2D) = v(from.x.toInt(), from.y.toInt())
+
+    private fun vertices(pos: Point /* = Vector2D */): List<Point> {
+        val topLeft = v(pos.x.roundToInt(),pos.y.toInt())
+        // wound in counter-clockwise position
+        return listOf(v(0, 0), v(0, 1), v(1, 1), v(1, 0), v(0, 0)).map {
+            topLeft + it
+        }
+    }
+
+    fun edges(pos: Point): List<Edge> {
+        return vertices(pos).windowed(size = 2).map { (first, second) -> first to second }
+    }
 
     companion object {
         private const val WALL = '#'
@@ -77,32 +92,24 @@ class Player(private var pos: Point, private var pov: Angle = 0.0) {
         this.pos = pos
     }
 
-    fun moveBy(dx: Double, dy: Double) {
-        moveTo(pos + v(dx, dy))
-    }
-
-    fun moveForward(nanos: Long) {
-        moveBy(sin(pov) * speed * nanos, cos(pov) * speed * nanos)
-    }
-
-    fun moveBackward(nanos: Long) {
-        moveBy(-sin(pov) * speed * nanos, -cos(pov) * speed * nanos)
-    }
-
-    fun turnLeft(nanos: Long) {
-        turnBy(-rotationSpeed * nanos)
-    }
-
     fun turnTo(pov: Angle) {
         this.pov = pov
     }
 
-    fun turnBy(angle: Angle) {
-        turnTo(this.pov + angle)
-    }
+    fun moveBy(v: Vector2D) = moveTo(pos + v)
 
-    fun turnRight(nanos: Long) {
-        turnBy(+rotationSpeed * nanos)
-    }
+    private fun forward(nanos: Long): Vector2D = v(sin(pov) * speed * nanos, -cos(pov) * speed * nanos)
+
+    private fun backward(nanos: Long): Vector2D = -forward(nanos)
+
+    fun moveForward(nanos: Long) = moveBy(forward(nanos))
+
+    fun moveBackward(nanos: Long) = moveBy(backward(nanos))
+
+    private fun turnBy(angle: Angle) = turnTo(pov + angle)
+
+    fun turnLeft(nanos: Long) = turnBy(-rotationSpeed * nanos)
+
+    fun turnRight(nanos: Long) = turnBy(+rotationSpeed * nanos)
 }
 

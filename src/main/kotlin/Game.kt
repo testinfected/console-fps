@@ -15,17 +15,17 @@ val map = """
         ################
         #..............#
         #..............#
-        #.........#....#
-        #.........#....#
+        #......#########
+        #......##......#
+        #......##......#
         #..............#
-        #..............#
-        #....##........#
-        #..............#
-        #..............#
-        #..............#
-        #..............#
-        #####..........#
-        #..............#
+        #..#...........#
+        #..#...........#
+        #..#...........#
+        #..#....##..####
+        #.......#......#
+        #.......#......#
+        #.......#####.##
         #..............#
         ################
 """.trimIndent()
@@ -59,6 +59,8 @@ private fun World.floorShade(distanceToFloor: Double): Char {
 private val terminal = Terminal.connect(StandardCharsets.UTF_8)
 
 
+private const val EDGE_DELTA = 0.004
+
 object Game {
     private val screen = terminal.screen
     private val keyboard = terminal.keyboard
@@ -71,7 +73,7 @@ object Game {
     private val camera = Camera(fov = Math.PI / 4)
 
     // Player starts at the middle of the map
-    private val player = Player(v(8.0, 8.0))
+    private val player = Player(v(5.0, 8.0))
 
     private val keystrokes = mutableListOf<Key>()
     private var enableStats = false
@@ -125,8 +127,16 @@ object Game {
 
     private fun drawMap() {
         (0 until screen.width).forEach { x ->
-            val distanceToWall = world.depth(from = player.position, direction = lookingDirection(x))
-            val wallShade = world.wallShade(distance = distanceToWall)
+            val eye = lookingDirection(x)
+            val distanceToWall = world.depth(from = player.position, direction = eye)
+
+            val wall = world.nearestWall(from = player.position + eye * distanceToWall)
+            val visibleEdges = world.edges(wall).filter { !it dot (eye) > 0 }.flatMap { it.toList() }.toSet()
+            val wallShade = when {
+                visibleEdges.any { eye angle (it - player.position) < EDGE_DELTA } -> NONE
+                else -> world.wallShade(distance = distanceToWall)
+            }
+
             val ceilingHeight = ceilingHeight(distance = distanceToWall)
             val floorHeight = floorHeight(distance = distanceToWall)
 
@@ -143,7 +153,7 @@ object Game {
     private fun lookingDirection(x: Int): Vector2D {
         val rayAngle = player.pointOfView - camera.fov / 2 + camera.fov * x / screen.width
         // Unit vector looking direction
-        return v(sin(rayAngle), cos(rayAngle))
+        return v(sin(rayAngle), -cos(rayAngle))
     }
 
     private fun ceilingHeight(distance: Double) = screen.height / 2.0 - screen.height / distance
