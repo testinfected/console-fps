@@ -34,6 +34,7 @@ class Screen(output: Writer) {
 
 
 enum class Key(val symbol: String) {
+    M("m"),
     Q("q"),
     LEFT("\u2190"),
     UP("\u2191"),
@@ -46,7 +47,9 @@ enum class Key(val symbol: String) {
     companion object {
         fun forStroke(character: Char): List<Key> {
             when (character) {
+                'm' -> return listOf(M)
                 'q' -> return listOf(Q)
+                'M' -> return listOf(SHIFT, M)
                 'Q' -> return listOf(SHIFT, Q)
                 ' ' -> return listOf(SPACE)
             }

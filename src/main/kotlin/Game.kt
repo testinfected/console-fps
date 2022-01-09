@@ -76,7 +76,8 @@ object Game {
     private val player = Player(v(5.0, 8.0))
 
     private val keystrokes = mutableListOf<Key>()
-    private var enableStats = false
+    private var showStats = false
+    private var showMap = false
 
     fun launch() {
         init()
@@ -85,13 +86,13 @@ object Game {
             val elapsedTime = timer.pulse()
             processInput()
             updateFrame(elapsedTime)
-            displayStats(timer.frameRate(elapsedTime))
+            if (showStats) displayStats(timer.frameRate(elapsedTime))
+            if (showMap) displayMap()
             screen.renderFrame()
         }
     }
 
     private fun displayStats(frameRate: Double) {
-        if (!enableStats) return
         val info = "X = %3.2f Y = %3.2f, POV = %3.2f, FPS = %4.2f, KEYS = %s".format(
             player.position.x,
             player.position.y,
@@ -104,11 +105,22 @@ object Game {
         }
     }
 
+    private fun displayMap() {
+        (0 until world.width).forEach { x ->
+            (0 until world.height).forEach { y ->
+                screen[x, y + 1] = world[x, y]
+            }
+        }
+        screen[player.position.x.toInt(), player.position.y.toInt() + 1] = 'P'
+    }
+
+
     private fun processInput() {
         keystrokes.clear()
         keystrokes += keyboard.readKeys()
         if (Key.Q in keystrokes) quit()
-        if (Key.SPACE in keystrokes) enableStats = !enableStats
+        if (Key.SPACE in keystrokes) showStats = !showStats
+        if (Key.M in keystrokes) showMap = !showMap
     }
 
     private fun init() {
