@@ -3,8 +3,8 @@ import kotlin.math.*
 
 // Top left corner is located at (0, 0)
 class World(private val map: CharArray) {
-    val width = 16
-    val height = 16
+    val width = 32
+    val height = 32
     val depth = 16.0
 
     operator fun get(x: Int, y: Int) = map[y * width + x]
