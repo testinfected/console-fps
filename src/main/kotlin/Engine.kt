@@ -5,7 +5,7 @@ import kotlin.math.*
 class World(private val map: CharArray) {
     val width = 32
     val height = 32
-    val depth = 16.0
+    val depth = 24.0
 
     operator fun get(x: Int, y: Int) = map[y * width + x]
 
@@ -51,7 +51,8 @@ class AnimationTimer(private val frameDuration: Long) {
         }
 
     fun pulse(): Long {
-        Thread.sleep(frameDelay)
+        val delay = frameDelay
+        if (delay > 0) Thread.sleep(delay)
         val now = nanos()
         val elapsedTime = now - lastPulse
         recordPulse(now)

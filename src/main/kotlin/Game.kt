@@ -1,8 +1,8 @@
+import Color.Companion.BLACK
 import WallShades.DARK
 import WallShades.FULL
 import WallShades.LIGHT
 import WallShades.MEDIUM
-import WallShades.NONE
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import kotlin.math.cos
@@ -55,27 +55,17 @@ object WallShades {
     const val NONE = ' '
 }
 
-private fun World.wallShade(distance: Double): Char {
-    return if (distance < depth / 4.0) FULL
-    else if (distance < depth / 3.0) DARK
-    else if (distance < depth / 2.0) MEDIUM
-    else if (distance < depth) LIGHT
-    else NONE
-}
+private fun World.wallShade(distance: Double) = Color.grey(1.0 - distance)
 
-private fun World.floorShade(distanceToFloor: Double): Char {
-    return if (distanceToFloor < 0.25) '#'
-    else if (distanceToFloor < 0.5) 'x'
-    else if (distanceToFloor < 0.75) '-'
-    else if (distanceToFloor < 0.9) '.'
-    else ' '
-}
+private fun World.floorColor(distance: Double) = Color.green(1.0 - distance)
+
+private fun World.ceilingColor(distance: Double) = Color.red(distance)
 
 
 private val terminal = Terminal.connect(StandardCharsets.UTF_8)
 
 
-private const val TINY_ANGLE = 0.004
+private const val TINY_ANGLE = 0.001
 
 object Game {
     private val screen = terminal.screen
@@ -159,19 +149,21 @@ object Game {
             val wall = world.locateWall(from = player.position, towards = eye)
             val visibleEdges = wall.visibleEdges(fromPointOfView = eye)
 
-            val wallShade = when {
-                visibleEdges.any { eye.isParallelTo(it - player.position, margin = TINY_ANGLE) } -> NONE
-                else -> world.wallShade(distance = wall.distance)
+            val wallShade = world.wallShade(distance = wall.distance / world.depth)
+            val wallGlyph = when {
+                visibleEdges.any { eye.isParallelTo(it - player.position, margin = TINY_ANGLE) } -> MEDIUM to wallShade
+                else -> FULL to wallShade
             }
 
             val ceilingHeight = ceilingHeight(distance = wall.distance)
             val floorHeight = floorHeight(distance = wall.distance)
 
             (0 until screen.height).forEach { y ->
+                val distanceToFloor = distanceToFloor(y)
                 when {
-                    y <= ceilingHeight -> screen[x, y] = ' '
-                    y <= floorHeight -> screen[x, y] = wallShade
-                    else -> screen[x, y] = world.floorShade(distanceToFloor(y))
+                    y <= ceilingHeight -> screen[x, y] = DARK to world.ceilingColor(distanceToFloor)
+                    y <= floorHeight -> screen[x, y] = wallGlyph
+                    else -> screen[x, y] = DARK to world.floorColor(distanceToFloor)
                 }
             }
         }
@@ -187,7 +179,7 @@ object Game {
 
     private fun floorHeight(distance: Double) = screen.height - ceilingHeight(distance)
 
-    private fun distanceToFloor(y: Int) = 1.0 - (y - screen.height / 2.0) / screen.height
+    private fun distanceToFloor(y: Int) = 1.0 - (y - screen.height / 2.0) / (screen.height / 2.0)
 
     private fun handleInput(elapsedTime: Long) {
         if (Key.LEFT in keystrokes) {

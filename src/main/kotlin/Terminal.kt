@@ -24,7 +24,15 @@ object ANSI {
     val DOWN = "${CSI}B"
     val RIGHT = "${CSI}C"
     val LEFT = "${CSI}D"
-    val HIDE_CURSOR = "$CSI?25l"
+    val HIDE_CURSOR = "${CSI}?25l"
+
+    fun fg(red: Int, green: Int, blue: Int): String {
+        return "${CSI}38;2;$red;$green;${blue}m"
+    }
+
+    fun bg(red: Int, green: Int, blue: Int): String {
+        return "${CSI}48;2;$red;$green;${blue}m"
+    }
 
     fun keysIn(input: Queue<Char>): List<Key> {
         return when (val key = input.poll() ?: return listOf()) {
@@ -68,8 +76,11 @@ object Stty {
 }
 
 
+val TRUE_COLOR: (Color) -> CharArray = { color -> ANSI.fg(color.red, color.green, color.blue).toCharArray() }
+
+
 class Terminal(charset: Charset) {
-    val screen = Screen(OutputStreamWriter(System.out, charset))
+    val screen = Screen(OutputStreamWriter(System.out, charset), palette = TRUE_COLOR)
     val keyboard = Keyboard(InputStreamReader(System.`in`, charset))
 
     fun activateSingleCharacterMode() {
