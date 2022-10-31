@@ -4,8 +4,8 @@ import java.io.Writer
 import java.util.ArrayDeque
 
 class Screen(output: Writer) {
-    val width = 320
-    val height = 100
+    val width = 180
+    val height = 60
 
     private val output = PrintWriter(output)
     private val buffer = CharArray(width * height)
