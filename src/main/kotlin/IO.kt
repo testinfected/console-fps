@@ -5,7 +5,6 @@ import java.util.*
 
 
 data class Color(val rgb: Int) {
-
     val red: Int get() = rgb and 0xFF0000 shr 16
     val green: Int get() = rgb and 0xFF00 shr 8
     val blue: Int get() = rgb and 0xFF
@@ -38,8 +37,8 @@ typealias ColorPalette = (Color) -> CharArray
 
 
 class Screen(out: Writer, private val palette: ColorPalette) {
-    val width = 180
-    val height = 60
+    val width = 320
+    val height = 80
 
     private val out = PrintWriter(out)
     private val chars = CharArray(width * height)

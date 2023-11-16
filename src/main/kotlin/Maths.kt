@@ -12,7 +12,7 @@ fun Edge.toVector(): Vector2D = second - first
 operator fun Edge.not(): Vector2D = !toVector()
 
 data class Vector2D(val x: Double, val y: Double) {
-    val magnitude: Double
+    private val magnitude: Double
         get() = sqrt(x * x + y * y)
 
     operator fun plus(other: Vector2D): Vector2D {
@@ -49,7 +49,7 @@ fun v(x: Int, y: Int) = v(x.toDouble(), y.toDouble())
 fun Vector2D.isParallelTo(other: Vector2D, margin: Double = 0.0) = (this angle other) < margin
 
 
-data class Polyhedron(val vertices: List<Point>, val distance: Double) {
+data class Polyhedron(val vertices: List<Point>) {
     private val edges: List<Edge> = vertices.windowed(size = 2).map { (first, second) -> first to second }
 
     fun visibleEdges(fromPointOfView: Vector2D): Set<Point> {
@@ -57,10 +57,10 @@ data class Polyhedron(val vertices: List<Point>, val distance: Double) {
     }
 }
 
-fun cube(topLeft: Point, distance: Double): Polyhedron {
+fun cube(topLeft: Point): Polyhedron {
     // wound in counter-clockwise position
     val vertices = listOf(v(0, 0), v(0, 1), v(1, 1), v(1, 0), v(0, 0)).map {
         topLeft + it
     }
-    return Polyhedron(vertices, distance)
+    return Polyhedron(vertices)
 }

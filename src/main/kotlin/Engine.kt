@@ -14,10 +14,10 @@ class World(private val map: CharArray) {
 
     fun isWallAt(step: Point) = this[step.x.toInt(), step.y.toInt()] == WALL
 
-    fun locateWall(from: Point, towards: Vector2D): Polyhedron {
+    fun locateWall(from: Point, towards: Vector2D): Pair<Polyhedron, Double> {
         val distance = depth(from, direction = towards)
         val hit = from + towards * distance
-        return cube(v(hit.x.toInt(), hit.y.toInt()), distance)
+        return cube(v(hit.x.toInt(), hit.y.toInt())) to distance
     }
 
     companion object {
@@ -43,15 +43,14 @@ class AnimationTimer(private val frameDuration: Long) {
     private var nextPulse: Long = start
     private var lastPulse: Long = start
 
-    private val frameDelay: Long
-        get() {
-            val now = nanos()
-            val timeUntilPulse = (nextPulse - now) / 1_000_000
-            return max(0, timeUntilPulse)
-        }
+    private fun frameDelay(): Long {
+        val now = nanos()
+        val timeUntilPulse = (nextPulse - now) / 1_000_000
+        return max(0, timeUntilPulse)
+    }
 
     fun pulse(): Long {
-        val delay = frameDelay
+        val delay = frameDelay()
         if (delay > 0) Thread.sleep(delay)
         val now = nanos()
         val elapsedTime = now - lastPulse
@@ -78,31 +77,28 @@ class Player(private var pos: Point, private var pov: Angle = 0.0) {
     val pointOfView get() = pov
 
     private val speed = 5.0 / SECONDS.toNanos(1)
+
     // Player makes a full revolution in 3s
     private val rotationSpeed = 2.0 * PI / 3.0 / SECONDS.toNanos(1)
 
-    fun moveTo(pos: Point) {
-        this.pos = pos
+    private fun advance(nanos: Long): Vector2D = v(sin(pov) * speed * nanos, -cos(pov) * speed * nanos)
+
+    fun moveForward(nanos: Long) {
+        pos += advance(nanos)
     }
 
-    fun turnTo(pov: Angle) {
-        this.pov = pov
+    fun moveBackward(nanos: Long) {
+        pos -= advance(nanos)
     }
 
-    fun moveBy(v: Vector2D) = moveTo(pos + v)
+    fun turnRight(nanos: Long) {
+        pov += rotationSpeed * nanos
+    }
 
-    private fun forward(nanos: Long): Vector2D = v(sin(pov) * speed * nanos, -cos(pov) * speed * nanos)
-
-    private fun backward(nanos: Long): Vector2D = -forward(nanos)
-
-    fun moveForward(nanos: Long) = moveBy(forward(nanos))
-
-    fun moveBackward(nanos: Long) = moveBy(backward(nanos))
-
-    private fun turnBy(angle: Angle) = turnTo(pov + angle)
-
-    fun turnLeft(nanos: Long) = turnBy(-rotationSpeed * nanos)
-
-    fun turnRight(nanos: Long) = turnBy(+rotationSpeed * nanos)
+    fun turnLeft(nanos: Long) {
+        pov -= rotationSpeed * nanos
+    }
 }
+
+fun Player.hasHitWallIn(world: World) = world.isWallAt(position)
 
