@@ -12,9 +12,9 @@ class World(private val map: CharArray) {
     fun isOutOfBounds(p: Point) =
         p.x < 0 || p.x >= width || p.y < 0 || p.y >= height
 
-    fun isWallAt(step: Point) = this[step.x.toInt(), step.y.toInt()] == WALL
+    fun isWallAt(pos: Point) = this[pos.x.toInt(), pos.y.toInt()] == WALL
 
-    fun locateWall(from: Point, towards: Vector2D): Pair<Polyhedron, Double> {
+    fun locateWall(from: Point, towards: Direction): Pair<Polyhedron, Distance> {
         val distance = depth(from, direction = towards)
         val hit = from + towards * distance
         return cube(v(hit.x.toInt(), hit.y.toInt())) to distance
@@ -29,14 +29,23 @@ class World(private val map: CharArray) {
     }
 }
 
-// Simple ray casting to find distance to wall
-tailrec fun World.depth(from: Point, direction: Vector2D, step: Double = 0.1, delta: Double = 0.0): Double {
-    if (delta >= depth) return depth
-    if (isOutOfBounds(from)) return depth // There is no wall at all in that direction
-    if (isWallAt(from)) return delta
-    return depth(from + direction * step, direction, step, delta + step)
+fun World.depth(position: Point, direction: Direction): Distance {
+    return RayCasting(depth, outOfBounds = ::isOutOfBounds).distanceFrom(position, ::isWallAt, direction)
 }
 
+// Simple ray casting to find distance to object
+class RayCasting(private val depth: Distance, private val step: Distance = 0.1, private val outOfBounds: (Point) -> Boolean) {
+    fun distanceFrom(pos: Point, toPos: (Point) -> Boolean, inDirection: Direction): Distance {
+        return distance(pos, inDirection, toPos, 0.0)
+    }
+
+    private tailrec fun distance(from: Point, direction: Direction, objectAt: (Point) -> Boolean, delta: Distance): Distance {
+        if (delta >= depth) return depth
+        if (outOfBounds(from)) return depth // There is nothing at all in that direction
+        if (objectAt(from)) return delta
+        return distance(from + direction * step, direction, objectAt, delta + step)
+    }
+}
 
 class AnimationTimer(private val frameDuration: Long) {
     private val start: Long = nanos()

@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import kotlin.math.cos
 import kotlin.math.sin
-import kotlin.system.exitProcess
 
 
 // World has fixed size 32x32 size
@@ -60,14 +59,9 @@ private fun floorColor(distance: Double): Color = Color.green(1.0 - distance)
 private fun ceilingColor(distance: Double) = Color.red(distance)
 
 
-private val terminal = Terminal.connect(StandardCharsets.UTF_8)
-
-
 private const val TINY_ANGLE = 0.001
 
-object Game {
-    private val screen = terminal.screen
-    private val keyboard = terminal.keyboard
+class Game(private val screen: Screen, private val keyboard: Keyboard) {
     private val world = World.load(map)
 
     // Set frame duration to account for terminal key repeat delay in order to get a smooth animation
@@ -79,20 +73,19 @@ object Game {
     // Player starts at the middle of the map
     private val player = Player(v(5.0, 8.0))
 
-    private val keystrokes = mutableListOf<Key>()
+    private var stopped = false
+    private var keys = setOf<Key>()
     private var showStats = false
     private var showMap = false
 
-    fun launch() {
-        init()
-
-        while (true) {
+    fun start() {
+        while (!stopped) {
             val elapsedTime = timer.pulse()
             processInput()
             updateFrame(elapsedTime)
             if (showStats) displayStats(timer.frameRate(elapsedTime))
             if (showMap) displayMap()
-            screen.renderFrame()
+            screen.render()
         }
     }
 
@@ -102,7 +95,7 @@ object Game {
             player.position.y,
             player.pointOfView,
             frameRate,
-            keystrokes.joinToString { it.symbol }
+            keys.joinToString { it.symbol }
         )
         info.toCharArray().forEachIndexed { i, char ->
             screen[i, 0] = char
@@ -118,22 +111,15 @@ object Game {
         screen[player.position.x.toInt(), player.position.y.toInt() + 1] = 'P'
     }
 
-
     private fun processInput() {
-        keystrokes.clear()
-        keystrokes += keyboard.readKeys()
-        if (Key.Q in keystrokes) quit()
-        if (Key.SPACE in keystrokes) showStats = !showStats
-        if (Key.M in keystrokes) showMap = !showMap
-    }
-
-    private fun init() {
-        terminal.activateSingleCharacterMode()
+        keys = keyboard.poll()
+        if (Key.Q in keys) quit()
+        if (Key.SPACE in keys) showStats = !showStats
+        if (Key.M in keys) showMap = !showMap
     }
 
     private fun quit() {
-        terminal.backToInteractiveMode()
-        exitProcess(0)
+        stopped = true
     }
 
     private fun updateFrame(elapsedTime: Long) {
@@ -158,9 +144,9 @@ object Game {
 
             (0 until screen.height).forEach { y ->
                 when {
-                    y <= ceilingHeight -> screen[x, y] = DARK to ceilingColor(distanceToFloor(y))
-                    y <= floorHeight -> screen[x, y] = wallGlyph
-                    else -> screen[x, y] = DARK to floorColor(distanceToFloor(y))
+                    y <= ceilingHeight -> screen.set(x, y, DARK to ceilingColor(distanceToFloor(y)))
+                    y <= floorHeight -> screen.set(x, y, wallGlyph)
+                    else -> screen.set(x, y, DARK to floorColor(distanceToFloor(y)))
                 }
             }
         }
@@ -179,24 +165,37 @@ object Game {
     private fun distanceToFloor(y: Int) = 1.0 - (y - screen.height / 2.0) / (screen.height / 2.0)
 
     private fun handleInput(elapsedTime: Long) {
-        if (Key.LEFT in keystrokes) {
+        if (Key.LEFT in keys) {
             player.turnLeft(elapsedTime)
         }
-        if (Key.RIGHT in keystrokes) {
+        if (Key.RIGHT in keys) {
             player.turnRight(elapsedTime)
         }
-        if (Key.UP in keystrokes) {
+        if (Key.UP in keys) {
             player.moveForward(elapsedTime)
             if (player.hasHitWallIn(world)) player.moveBackward(elapsedTime)
         }
-        if (Key.DOWN in keystrokes) {
+        if (Key.DOWN in keys) {
             player.moveBackward(elapsedTime)
             if (player.hasHitWallIn(world)) player.moveForward(elapsedTime)
         }
     }
+
+    companion object {
+        fun launchFrom(terminal: Terminal) {
+            terminal.raw()
+            terminal.hideCursor()
+            val game = Game(terminal.screen, terminal.keyboard)
+            try {
+                game.start()
+            } finally {
+                terminal.sane()
+            }
+        }
+    }
 }
 
-
 fun main() {
-    Game.launch()
+    val terminal = Terminal.connect(Size(120, 40), WHITE_ON_BLACK, TRUE_COLOR, StandardCharsets.UTF_8)
+    Game.launchFrom(terminal = terminal)
 }

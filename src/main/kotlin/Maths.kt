@@ -3,7 +3,11 @@ import kotlin.math.sqrt
 
 typealias Angle = Double
 
+typealias Distance = Double
+
 typealias Point = Vector2D
+
+typealias Direction = Vector2D
 
 typealias Edge = Pair<Point, Point>
 

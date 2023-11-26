@@ -1,6 +1,9 @@
 import Color.Companion.BLACK
 import Color.Companion.WHITE
-import java.io.*
+import java.io.CharArrayWriter
+import java.io.PrintWriter
+import java.io.Reader
+import java.io.Writer
 import java.util.*
 
 
@@ -35,10 +38,13 @@ val Glyph.color get() = second
 
 typealias ColorPalette = (Color) -> CharArray
 
+data class TextColor(val fg: Color, val bg: Color)
 
-class Screen(out: Writer, private val palette: ColorPalette) {
-    val width = 320
-    val height = 80
+val WHITE_ON_BLACK = TextColor(WHITE, BLACK)
+
+class Screen(out: Writer, private val size: Size, private val color: TextColor, private val palette: ColorPalette) {
+    val width by size::width
+    val height by size::height
 
     private val out = PrintWriter(out)
     private val chars = CharArray(width * height)
@@ -46,7 +52,7 @@ class Screen(out: Writer, private val palette: ColorPalette) {
     private val buffer = CharArrayWriter(width * height * 24)
 
     operator fun set(x: Int, y: Int, value: Char) {
-        set(x, y, value to WHITE)
+        set(x, y, value to color.fg)
     }
 
     operator fun set(x: Int, y: Int, glyph: Glyph) {
@@ -58,35 +64,25 @@ class Screen(out: Writer, private val palette: ColorPalette) {
 
     private fun offset(y: Int, x: Int) = y * width + x
 
-    fun renderFrame() {
-        clear()
+    fun render() {
+        renderOffscreen()
         swapBuffers()
     }
 
     private fun swapBuffers() {
-        var currentColor = BLACK
-
-        fun setColor(color: Color) {
-            buffer.write(palette(color))
-            currentColor = color
-        }
-
-        (0 until width * height).forEach { offset ->
-            val color = Color(colors[offset])
-            if (color != currentColor) setColor(color)
-            buffer.append(chars[offset])
-        }
-
+        out.print(ANSI.HOME)
         out.print(buffer.toCharArray())
         out.flush()
         buffer.reset()
     }
 
-    private fun clear() {
-        out.print(ANSI.HIDE_CURSOR)
-        out.print(ANSI.CLS)
-        out.print(ANSI.HOME)
-        out.flush()
+    private fun renderOffscreen() {
+        (0 until width * height).fold(color.bg) { currentColor, offset ->
+            val color = Color(colors[offset])
+            if (color != currentColor) buffer.write(palette(color))
+            buffer.append(chars[offset])
+            color
+        }
     }
 }
 
@@ -103,29 +99,32 @@ enum class Key(val symbol: String) {
     ESC("ESC");
 
     companion object {
-        fun forStroke(character: Char): List<Key> {
+        fun forStroke(character: Char): Set<Key> {
             when (character) {
-                'm' -> return listOf(M)
-                'q' -> return listOf(Q)
-                'M' -> return listOf(SHIFT, M)
-                'Q' -> return listOf(SHIFT, Q)
-                ' ' -> return listOf(SPACE)
+                'm' -> return setOf(M)
+                'q' -> return setOf(Q)
+                'M' -> return setOf(SHIFT, M)
+                'Q' -> return setOf(SHIFT, Q)
+                ' ' -> return setOf(SPACE)
             }
-            return listOf()
+            return setOf()
         }
     }
 
     override fun toString() = symbol
 }
 
+interface InputDevice {
+    fun poll(): Set<Key>
+}
 
-class Keyboard(private val reader: Reader) {
+class Keyboard(private val reader: Reader): InputDevice {
     private val noInput = charArrayOf()
 
     // Assume this is enough for now
     private val buffer = CharArray(128)
 
-    fun readKeys(): List<Key> {
+    override fun poll(): Set<Key> {
         return ANSI.keysIn(ArrayDeque(readInput().toList()))
     }
 

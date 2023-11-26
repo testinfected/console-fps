@@ -4,6 +4,7 @@ import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.text.Charsets.UTF_8
 
 
 /**
@@ -34,68 +35,77 @@ object ANSI {
         return "${CSI}48;2;$red;$green;${blue}m"
     }
 
-    fun keysIn(input: Queue<Char>): List<Key> {
-        return when (val key = input.poll() ?: return listOf()) {
+    fun keysIn(input: Queue<Char>): Set<Key> {
+        return when (val key = input.poll() ?: return setOf()) {
             ESC -> {
-                when ("${ESC}${input.poll() ?: return listOf(Key.ESC)}") {
+                when ("${ESC}${input.poll() ?: return setOf(Key.ESC)}") {
                     CSI -> {
-                        val control = when ("${ANSI.CSI}${input.poll()}") {
-                            UP -> listOf(Key.UP)
-                            DOWN -> listOf(Key.DOWN)
-                            RIGHT -> listOf(Key.RIGHT)
-                            LEFT -> listOf(Key.LEFT)
+                        val control = when ("$CSI${input.poll()}") {
+                            UP -> setOf(Key.UP)
+                            DOWN -> setOf(Key.DOWN)
+                            RIGHT -> setOf(Key.RIGHT)
+                            LEFT -> setOf(Key.LEFT)
                             // We don't support any other control sequence
-                            else -> listOf()
+                            else -> setOf()
                         }
                         return control + keysIn(input)
                     }
                     // We don't support any other escape sequence
-                    else -> listOf(Key.ESC) + keysIn(input)
+                    else -> setOf(Key.ESC) + keysIn(input)
                 }
             }
+
             else -> Key.forStroke(key) + keysIn(input)
         }
     }
 }
 
 
-object Stty {
-    fun configure(vararg options: String) {
-        val stty = ProcessBuilder("/bin/sh", "-c", "stty ${options.joinToString(separator = " ")} < /dev/tty")
+enum class TerminalCharacteristic(private val flag: String) {
+    RAW("raw"), NO_ECHO("-echo"), SANE("sane");
+
+    fun set() {
+        val stty = ProcessBuilder("/bin/sh", "-c", "stty $flag --file /dev/tty")
             .redirectOutput(Redirect.INHERIT)
             .redirectError(Redirect.INHERIT)
             .start()
+
         if (!stty.waitFor(1, TimeUnit.SECONDS)) {
             stty.destroy()
             throw IOException("Timed out setting tty options")
         }
+
         if (stty.exitValue() != 0) {
             throw IOException("Failed to set tty options, exit code is ${stty.exitValue()}")
         }
     }
 }
 
+val TRUE_COLOR: ColorPalette = { ANSI.fg(it.red, it.green, it.blue).toCharArray() }
 
-val TRUE_COLOR: (Color) -> CharArray = { color -> ANSI.fg(color.red, color.green, color.blue).toCharArray() }
+data class Size(val width: Int, val height: Int)
 
-
-class Terminal(charset: Charset) {
-    val screen = Screen(OutputStreamWriter(System.out, charset), palette = TRUE_COLOR)
+class Terminal(size: Size, color: TextColor, palette: ColorPalette, charset: Charset) {
+    val screen = Screen(OutputStreamWriter(System.out, charset), size, color, palette)
     val keyboard = Keyboard(InputStreamReader(System.`in`, charset))
 
-    fun activateSingleCharacterMode() {
-        Stty.configure("raw")
-        Stty.configure("-echo")
+    fun raw(): Terminal = apply {
+        TerminalCharacteristic.RAW.set()
+        TerminalCharacteristic.NO_ECHO.set()
     }
 
-    fun backToInteractiveMode() {
-        Stty.configure("sane")
+    fun hideCursor() {
+        print(ANSI.HIDE_CURSOR)
+    }
+
+    fun sane() = apply {
+        TerminalCharacteristic.SANE.set()
     }
 
     companion object {
-        fun connect(charset: Charset = StandardCharsets.UTF_8): Terminal {
-            if (System.console() == null) throw IOException("Please launch from a tty")
-            return Terminal(charset)
+        fun connect(size: Size, color: TextColor, palette: ColorPalette, charset: Charset): Terminal {
+            if (System.console() == null) throw IOException("Please launch from a TTY")
+            return Terminal(size, color, palette, charset)
         }
     }
 }
